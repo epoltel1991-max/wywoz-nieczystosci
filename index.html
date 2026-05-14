@@ -8,7 +8,8 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
   :root {
@@ -252,7 +253,7 @@
       <rect x="11" y="7" width="6" height="5" rx="2" fill="#0F6E56"/>
       <rect x="13" y="4" width="2" height="4" rx="1" fill="#0F6E56"/>
     </svg>
-    <span>WywózSzamba.pl</span>
+    <span>Wywóz Nieczystości</span>
   </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="showView('booking')">Rezerwacja</button>
@@ -327,7 +328,17 @@
     <div class="card">
       <div class="card-step">
         <div class="step-badge">3</div>
-        <h2 style="margin:0">Adres i uwagi</h2>
+        <h2 style="margin:0">Dane kontaktowe i adres</h2>
+      </div>
+      <div class="row-2">
+        <div class="form-group">
+          <label>Imię</label>
+          <input type="text" id="book-name" placeholder="np. Jan">
+        </div>
+        <div class="form-group">
+          <label>Nazwisko</label>
+          <input type="text" id="book-surname" placeholder="np. Kowalski">
+        </div>
       </div>
       <div class="form-group">
         <label>Ulica i numer domu</label>
@@ -349,29 +360,26 @@
       </div>
     </div>
 
-    <!-- STEP 4: Phone verify -->
+    <!-- STEP 4: Email verify -->
     <div class="card">
       <div class="card-step">
         <div class="step-badge">4</div>
-        <h2 style="margin:0">Weryfikacja telefonu</h2>
+        <h2 style="margin:0">Weryfikacja e-mail</h2>
       </div>
-
-      <div id="phone-verify-section">
+      <div id="email-verify-section">
         <div class="info-note">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7.5" stroke="#185FA5"/><rect x="7.25" y="6.5" width="1.5" height="5" rx=".75" fill="#185FA5"/><circle cx="8" cy="4.5" r=".75" fill="#185FA5"/></svg>
-          Weryfikacja SMS chroni przed fałszywymi zgłoszeniami.
+          Wyślemy kod na Twój e-mail, aby potwierdzić rezerwację.
         </div>
         <div class="form-group">
-          <label>Twój numer telefonu</label>
+          <label>Twój adres e-mail</label>
           <div class="phone-row">
-            <input type="tel" id="book-phone" placeholder="+48 600 000 000">
-            <button class="btn-send-sms" id="btn-sms" onclick="sendSMS()">Wyślij SMS</button>
+            <input type="email" id="book-email" placeholder="np. jan@gmail.com">
+            <button class="btn-send-sms" id="btn-send-code" onclick="sendEmailCode()">Wyślij kod</button>
           </div>
-          <div id="recaptcha-container"></div>
         </div>
-
         <div class="form-group hidden" id="otp-section">
-          <label>Kod z SMS (6 cyfr)</label>
+          <label>Kod z e-maila (6 cyfr)</label>
           <div class="otp-row">
             <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,0)">
             <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,1)">
@@ -381,15 +389,14 @@
             <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,5)">
           </div>
           <div style="margin-top:8px">
-            <button class="btn-send-sms" onclick="verifyOTP()" style="width:auto;padding:8px 20px">Zweryfikuj kod</button>
+            <button class="btn-send-sms" onclick="verifyEmailCode()" style="width:auto;padding:8px 20px">Zweryfikuj kod</button>
             <span id="otp-status" style="margin-left:10px;font-size:13px;color:var(--gray-500)"></span>
           </div>
         </div>
-
-        <div class="hidden" id="phone-verified-badge">
+        <div class="hidden" id="email-verified-badge">
           <span class="verify-badge">
             <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l4 4 6-7" stroke="#3B6D11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-            Numer zweryfikowany
+            E-mail zweryfikowany
           </span>
         </div>
       </div>
@@ -468,12 +475,12 @@
 //  🔧 KONFIGURACJA — WYPEŁNIJ SWOIMI DANYMI Z FIREBASE CONSOLE
 // ─────────────────────────────────────────────────────────────────────────
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyBUTdSFz9yx2BhqOEmTXN7nsfyPjYyT5a0",
-  authDomain:        "wywoz-nieczystosci.firebaseapp.com",
-  projectId:         "wywoz-nieczystosci",
-  storageBucket:     "wywoz-nieczystosci.firebasestorage.app",
-  messagingSenderId: "756845847821",
-  appId:             "1:756845847821:web:4cf3e8e791edc5ce3bbc44"
+  apiKey:            "TWOJ_API_KEY",
+  authDomain:        "TWOJ_PROJECT.firebaseapp.com",
+  projectId:         "TWOJ_PROJECT_ID",
+  storageBucket:     "TWOJ_PROJECT.appspot.com",
+  messagingSenderId: "TWOJ_SENDER_ID",
+  appId:             "TWOJ_APP_ID"
 };
 
 // Hasło admina — zmień na własne (lepiej trzymać w Firebase Auth lub env)
@@ -482,9 +489,6 @@ const ADMIN_PASSWORD = "Admin1234!";
 // ─────────────────────────────────────────────────────────────────────────
 
 let db, auth;
-let phoneConfirmation = null;
-let phoneVerified = false;
-let verifiedPhone = "";
 let allBookings = [];
 
 // Init Firebase
@@ -530,77 +534,75 @@ function getCapacity() {
   return selectedCap + " m³";
 }
 
-// ─── SMS VERIFICATION ──────────────────────────────────────────────────────
-function sendSMS() {
-  if (!db) { alert("Skonfiguruj Firebase — patrz komentarz w kodzie."); return; }
-  const raw = document.getElementById("book-phone").value.trim();
-  let phone = raw.replace(/\s+/g,"");
-  if (!phone.startsWith("+")) phone = "+48" + phone.replace(/^0+/,"");
+// ─── EMAILJS CONFIG ────────────────────────────────────────────────────────
+// Uzupełnij swoimi danymi z emailjs.com
+const EMAILJS_PUBLIC_KEY  = "xVS1txvs-ki9rK5J9";
+const EMAILJS_SERVICE_ID  = "service_ndd3dtv";
+const EMAILJS_TEMPLATE_ID = "template_qf10hoi";
 
-  if (!/^\+\d{10,15}$/.test(phone)) {
-    alert("Podaj poprawny numer telefonu, np. +48600123456");
+let generatedCode = null;
+let emailVerified = false;
+let verifiedEmail = "";
+
+function sendEmailCode() {
+  const email = document.getElementById("book-email").value.trim();
+  if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+    alert("Podaj poprawny adres e-mail.");
     return;
   }
 
-  document.getElementById("btn-sms").disabled = true;
-  document.getElementById("btn-sms").innerHTML = '<span class="spinner"></span>';
+  const btn = document.getElementById("btn-send-code");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
 
-  try {
-    const recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
-      size: "invisible",
-      callback: () => {}
-    });
+  generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+  verifiedEmail = email;
 
-    auth.signInWithPhoneNumber(phone, recaptchaVerifier)
-      .then(result => {
-        phoneConfirmation = result;
-        verifiedPhone = phone;
-        document.getElementById("otp-section").classList.remove("hidden");
-        document.getElementById("btn-sms").innerHTML = "Wyślij ponownie";
-        document.getElementById("btn-sms").disabled = false;
-        document.querySelector(".otp-digit").focus();
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Błąd wysyłania SMS: " + err.message);
-        document.getElementById("btn-sms").innerHTML = "Wyślij SMS";
-        document.getElementById("btn-sms").disabled = false;
-      });
-  } catch(e) {
-    alert("Firebase nie jest skonfigurowany. Uzupełnij dane w kodzie.");
-    document.getElementById("btn-sms").innerHTML = "Wyślij SMS";
-    document.getElementById("btn-sms").disabled = false;
-  }
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    to_email: email,
+    code: generatedCode
+  })
+  .then(() => {
+    document.getElementById("otp-section").classList.remove("hidden");
+    btn.innerHTML = "Wyślij ponownie";
+    btn.disabled = false;
+    document.querySelector(".otp-digit").focus();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Błąd wysyłania e-maila: " + JSON.stringify(err));
+    btn.innerHTML = "Wyślij kod";
+    btn.disabled = false;
+  });
 }
 
 function otpNav(input, idx) {
   const digits = document.querySelectorAll(".otp-digit");
   if (input.value.length === 1 && idx < 5) digits[idx+1].focus();
-  if ([...digits].every(d => d.value.length === 1)) verifyOTP();
+  if ([...digits].every(d => d.value.length === 1)) verifyEmailCode();
 }
 
-function verifyOTP() {
+function verifyEmailCode() {
   const digits = [...document.querySelectorAll(".otp-digit")];
   const code = digits.map(d => d.value).join("");
-  if (code.length < 6) { alert("Wprowadź 6-cyfrowy kod."); return; }
-  if (!phoneConfirmation) { alert("Najpierw wyślij SMS."); return; }
-
   const status = document.getElementById("otp-status");
-  status.textContent = "Weryfikowanie…";
 
-  phoneConfirmation.confirm(code)
-    .then(() => {
-      phoneVerified = true;
-      document.getElementById("otp-section").classList.add("hidden");
-      document.getElementById("phone-verified-badge").classList.remove("hidden");
-      document.getElementById("btn-sms").classList.add("hidden");
-      document.getElementById("book-phone").disabled = true;
-      status.textContent = "";
-    })
-    .catch(err => {
-      status.textContent = "❌ Błędny kod. Spróbuj ponownie.";
-      console.error(err);
-    });
+  if (code.length < 6) { alert("Wprowadź 6-cyfrowy kod."); return; }
+  if (!generatedCode)  { alert("Najpierw wyślij kod na e-mail."); return; }
+
+  if (code === generatedCode) {
+    emailVerified = true;
+    document.getElementById("otp-section").classList.add("hidden");
+    document.getElementById("email-verified-badge").classList.remove("hidden");
+    document.getElementById("btn-send-code").classList.add("hidden");
+    document.getElementById("book-email").disabled = true;
+    status.textContent = "";
+  } else {
+    status.textContent = "❌ Błędny kod. Spróbuj ponownie.";
+    digits.forEach(d => d.value = "");
+    digits[0].focus();
+  }
 }
 
 // ─── SUBMIT ────────────────────────────────────────────────────────────────
@@ -609,6 +611,8 @@ async function submitBooking() {
 
   const date    = document.getElementById("book-date").value;
   const time    = document.getElementById("book-time").value;
+  const name    = document.getElementById("book-name").value.trim();
+  const surname = document.getElementById("book-surname").value.trim();
   const address = document.getElementById("book-address").value.trim();
   const zip     = document.getElementById("book-zip").value.trim();
   const city    = document.getElementById("book-city").value.trim();
@@ -617,8 +621,9 @@ async function submitBooking() {
 
   if (!date || !time)    { alert("Wybierz datę i godzinę."); return; }
   if (!cap)              { alert("Wybierz pojemność szamba."); return; }
+  if (!name || !surname) { alert("Podaj imię i nazwisko."); return; }
   if (!address || !city) { alert("Podaj adres."); return; }
-  if (!phoneVerified)    { alert("Zweryfikuj numer telefonu."); return; }
+  if (!emailVerified)    { alert("Zweryfikuj adres e-mail."); return; }
 
   const btn = document.getElementById("btn-submit");
   btn.disabled = true;
@@ -628,9 +633,9 @@ async function submitBooking() {
 
   try {
     await db.collection("bookings").add({
-      date, time, address, zip, city, notes,
+      date, time, name, surname, address, zip, city, notes,
       capacity: cap,
-      phone: verifiedPhone,
+      email: verifiedEmail,
       ref,
       status: "new",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -714,8 +719,8 @@ function renderBookings(list) {
           <div class="booking-month">${month}</div>
         </div>
         <div class="booking-info">
-          <h3>${b.address}, ${b.zip} ${b.city}</h3>
-          <p>📞 ${b.phone}</p>
+          <h3>${b.name ? b.name + ' ' + b.surname + ' — ' : ''}${b.address}, ${b.zip} ${b.city}</h3>
+          <p>📧 ${b.email}</p>
           ${b.notes ? `<p style="margin-top:4px;font-style:italic;">"${b.notes}"</p>` : ""}
         </div>
         <div class="booking-meta">
