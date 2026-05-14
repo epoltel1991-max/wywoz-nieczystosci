@@ -452,7 +452,7 @@ const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyBUTdSFz9yx2BhqOEmTXN7nsfyPjYyT5a0",
   authDomain:        "wywoz-nieczystosci.firebaseapp.com",
   projectId:         "wywoz-nieczystosci",
-  storageBucket:     "wywoz-nieczystosci.firebasestorage.app",
+  storageBucket:     "",
   messagingSenderId: "756845847821",
   appId:             "1:756845847821:web:4cf3e8e791edc5ce3bbc44"
 };
@@ -578,7 +578,7 @@ async function loadBookings() {
     return;
   }
   try {
-    const snap = await db.collection("bookings").orderBy("date","desc").orderBy("createdAt","desc").get();
+    const snap = await db.collection("bookings").orderBy("createdAt","desc").get();
     allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     updateStats();
     renderBookings(allBookings);
