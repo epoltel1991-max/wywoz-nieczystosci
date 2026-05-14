@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wywóz Nieczystości — Rezerwacja</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+<style>
+  :root {
+    --primary: #1D9E75;
+    --primary-dark: #0F6E56;
+    --primary-light: #E1F5EE;
+    --accent: #185FA5;
+    --danger: #E24B4A;
+    --warning: #EF9F27;
+    --gray-100: #F1EFE8;
+    --gray-200: #D3D1C7;
+    --gray-500: #888780;
+    --gray-800: #444441;
+    --gray-900: #2C2C2A;
+    --white: #ffffff;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f7f5;
+    color: var(--gray-900);
+    min-height: 100vh;
+  }
+
+  /* ─── LAYOUT ─── */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 1.05rem; color: var(--primary-dark); }
+  .logo svg { width: 28px; height: 28px; }
+
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500;
+    border: none; background: none; cursor: pointer; color: var(--gray-500);
+    transition: all 0.15s;
+  }
+  .nav-tab.active { background: var(--primary-light); color: var(--primary-dark); }
+  .nav-tab:hover:not(.active) { background: var(--gray-100); }
+
+  .main { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .card h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--gray-900); }
+  .card-step {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;
+  }
+  .step-badge {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--primary);
+    color: white; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .step-badge.done { background: var(--gray-200); color: var(--gray-500); }
+
+  /* ─── FORM ELEMENTS ─── */
+  .form-group { margin-bottom: 1.25rem; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-800); margin-bottom: 6px; }
+
+  input[type="text"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea {
+    width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--gray-200); font-size: 15px;
+    background: var(--white); color: var(--gray-900);
+    transition: border-color 0.15s; outline: none;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+  textarea { resize: vertical; min-height: 90px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  /* ─── CAPACITY PICKER ─── */
+  .capacity-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .cap-btn {
+    padding: 14px 10px; border-radius: var(--radius-sm); border: 1.5px solid var(--gray-200);
+    background: var(--white); cursor: pointer; text-align: center;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .cap-btn:hover { border-color: var(--primary); }
+  .cap-btn.selected { border-color: var(--primary); background: var(--primary-light); }
+  .cap-btn .cap-val { font-size: 1.15rem; font-weight: 600; color: var(--primary-dark); }
+  .cap-btn .cap-lbl { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+  /* ─── PHONE VERIFY ─── */
+  .phone-row { display: flex; gap: 10px; }
+  .phone-row input { flex: 1; }
+  .btn-send-sms {
+    white-space: nowrap; padding: 10px 16px; border-radius: var(--radius-sm);
+    background: var(--accent); color: white; border: none; font-size: 14px;
+    font-weight: 500; cursor: pointer; font-family: inherit; transition: opacity 0.15s;
+  }
+  .btn-send-sms:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .otp-row { display: flex; gap: 8px; margin-top: 10px; }
+  .otp-row input {
+    width: 50px; text-align: center; font-size: 1.3rem;
+    font-weight: 600; letter-spacing: 2px; padding: 8px 4px;
+  }
+  .verify-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #EAF3DE; color: #3B6D11; padding: 6px 12px;
+    border-radius: 20px; font-size: 13px; font-weight: 500;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn-primary {
+    width: 100%; padding: 14px; border-radius: var(--radius-sm);
+    background: var(--primary); color: white; border: none;
+    font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:disabled { background: var(--gray-200); color: var(--gray-500); cursor: not-allowed; }
+
+  /* ─── SUCCESS ─── */
+  .success-box {
+    text-align: center; padding: 2.5rem;
+  }
+  .success-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--primary-light); margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .success-icon svg { color: var(--primary); }
+  .success-box h2 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .success-box p { color: var(--gray-500); font-size: 15px; }
+  .booking-ref {
+    display: inline-block; margin-top: 1rem; padding: 8px 20px;
+    background: var(--gray-100); border-radius: 20px;
+    font-family: monospace; font-size: 1rem; font-weight: 700; letter-spacing: 2px;
+    color: var(--primary-dark);
+  }
+
+  /* ─── ADMIN PANEL ─── */
+  .admin-gate { text-align: center; padding: 3rem 1rem; }
+  .admin-gate h2 { margin-bottom: 1rem; }
+  .admin-gate input { max-width: 280px; text-align: center; margin: 0 auto 1rem; display: block; }
+
+  .bookings-list { display: flex; flex-direction: column; gap: 12px; }
+  .booking-card {
+    background: var(--white); border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200); padding: 1rem 1.25rem;
+    display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 1rem;
+  }
+  .booking-date-block { text-align: center; }
+  .booking-day { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--primary-dark); }
+  .booking-month { font-size: 11px; text-transform: uppercase; color: var(--gray-500); letter-spacing: 1px; }
+  .booking-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .booking-info p { font-size: 13px; color: var(--gray-500); }
+  .booking-meta { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .tag {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 500;
+  }
+  .tag-size { background: var(--primary-light); color: var(--primary-dark); }
+  .tag-time { background: #E6F1FB; color: #185FA5; }
+  .tag-new { background: #FAEEDA; color: #633806; }
+
+  .filters {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem;
+  }
+  .filter-btn {
+    padding: 5px 14px; border-radius: 16px; border: 1px solid var(--gray-200);
+    background: var(--white); font-size: 13px; cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem;
+  }
+  .stat-box {
+    background: var(--white); border-radius: var(--radius-sm); padding: 1rem;
+    text-align: center; box-shadow: var(--shadow);
+  }
+  .stat-box .val { font-size: 1.8rem; font-weight: 700; color: var(--primary-dark); }
+  .stat-box .lbl { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+  /* ─── MISC ─── */
+  .info-note {
+    background: #E6F1FB; border-radius: var(--radius-sm); padding: 10px 14px;
+    font-size: 13px; color: #185FA5; margin-bottom: 1rem;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .divider { border: none; border-top: 1px solid var(--gray-200); margin: 1.25rem 0; }
+  .hidden { display: none !important; }
+  .spinner {
+    border: 3px solid var(--gray-200); border-top-color: var(--primary);
+    border-radius: 50%; width: 20px; height: 20px;
+    animation: spin 0.7s linear infinite; display: inline-block; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #recaptcha-container { margin-top: 10px; }
+
+  @media (max-width: 600px) {
+    .row-2 { grid-template-columns: 1fr; }
+    .capacity-grid { grid-template-columns: repeat(2, 1fr); }
+    .nav-tabs { display: none; }
+    .stats-row { grid-template-columns: 1fr; }
+    .booking-card { grid-template-columns: 1fr; }
+    .booking-meta { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="28" height="28" rx="8" fill="#1D9E75" opacity="0.12"/>
+      <ellipse cx="14" cy="16" rx="8" ry="5" fill="#1D9E75" opacity="0.3"/>
+      <rect x="6" y="10" width="16" height="8" rx="4" fill="#1D9E75"/>
+      <rect x="11" y="7" width="6" height="5" rx="2" fill="#0F6E56"/>
+      <rect x="13" y="4" width="2" height="4" rx="1" fill="#0F6E56"/>
+    </svg>
+    <span>WywózSzamba.pl</span>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('booking')">Rezerwacja</button>
+    <button class="nav-tab" onclick="showView('admin')">Panel admina</button>
+  </nav>
+</header>
+
+<main class="main">
+
+  <!-- ═══════════ BOOKING VIEW ═══════════ -->
+  <div id="view-booking">
+
+    <!-- STEP 1: Date & time -->
+    <div class="card">
+      <div class="card-step">
+        <div class="step-badge">1</div>
+        <h2 style="margin:0">Termin wywozu</h2>
+      </div>
+      <div class="row-2">
+        <div class="form-group">
+          <label>Data</label>
+          <input type="date" id="book-date" min="">
+        </div>
+        <div class="form-group">
+          <label>Preferowana godzina</label>
+          <select id="book-time">
+            <option value="">— wybierz okno —</option>
+            <option value="07:00–09:00">07:00 – 09:00</option>
+            <option value="09:00–11:00">09:00 – 11:00</option>
+            <option value="11:00–13:00">11:00 – 13:00</option>
+            <option value="13:00–15:00">13:00 – 15:00</option>
+            <option value="15:00–17:00">15:00 – 17:00</option>
+            <option value="17:00–19:00">17:00 – 19:00</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Capacity -->
+    <div class="card">
+      <div class="card-step">
+        <div class="step-badge">2</div>
+        <h2 style="margin:0">Pojemność szamba</h2>
+      </div>
+      <div class="capacity-grid" id="cap-grid">
+        <button class="cap-btn" data-val="2" onclick="selectCap(this)">
+          <div class="cap-val">2 m³</div><div class="cap-lbl">mały</div>
+        </button>
+        <button class="cap-btn" data-val="4" onclick="selectCap(this)">
+          <div class="cap-val">4 m³</div><div class="cap-lbl">standard</div>
+        </button>
+        <button class="cap-btn" data-val="6" onclick="selectCap(this)">
+          <div class="cap-val">6 m³</div><div class="cap-lbl">duży</div>
+        </button>
+        <button class="cap-btn" data-val="8" onclick="selectCap(this)">
+          <div class="cap-val">8 m³</div><div class="cap-lbl">bardzo duży</div>
+        </button>
+        <button class="cap-btn" data-val="10" onclick="selectCap(this)">
+          <div class="cap-val">10 m³</div><div class="cap-lbl">zbiornik</div>
+        </button>
+        <button class="cap-btn" data-val="custom" onclick="selectCap(this)">
+          <div class="cap-val">Inne</div><div class="cap-lbl">wpisz ręcznie</div>
+        </button>
+      </div>
+      <div class="form-group hidden" id="cap-custom-row" style="margin-top:12px">
+        <label>Pojemność (m³)</label>
+        <input type="text" id="cap-custom" placeholder="np. 12">
+      </div>
+    </div>
+
+    <!-- STEP 3: Address & notes -->
+    <div class="card">
+      <div class="card-step">
+        <div class="step-badge">3</div>
+        <h2 style="margin:0">Adres i uwagi</h2>
+      </div>
+      <div class="form-group">
+        <label>Ulica i numer domu</label>
+        <input type="text" id="book-address" placeholder="np. ul. Leśna 12">
+      </div>
+      <div class="row-2">
+        <div class="form-group">
+          <label>Kod pocztowy</label>
+          <input type="text" id="book-zip" placeholder="00-000" maxlength="6">
+        </div>
+        <div class="form-group">
+          <label>Miejscowość</label>
+          <input type="text" id="book-city" placeholder="np. Warszawa">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Uwagi dla kierowcy</label>
+        <textarea id="book-notes" placeholder="np. Brama jest z lewej strony — kod 1234. Dzwonić 15 min przed przyjazdem. Pies w kojcu."></textarea>
+      </div>
+    </div>
+
+    <!-- STEP 4: Phone verify -->
+    <div class="card">
+      <div class="card-step">
+        <div class="step-badge">4</div>
+        <h2 style="margin:0">Weryfikacja telefonu</h2>
+      </div>
+
+      <div id="phone-verify-section">
+        <div class="info-note">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7.5" stroke="#185FA5"/><rect x="7.25" y="6.5" width="1.5" height="5" rx=".75" fill="#185FA5"/><circle cx="8" cy="4.5" r=".75" fill="#185FA5"/></svg>
+          Weryfikacja SMS chroni przed fałszywymi zgłoszeniami.
+        </div>
+        <div class="form-group">
+          <label>Twój numer telefonu</label>
+          <div class="phone-row">
+            <input type="tel" id="book-phone" placeholder="+48 600 000 000">
+            <button class="btn-send-sms" id="btn-sms" onclick="sendSMS()">Wyślij SMS</button>
+          </div>
+          <div id="recaptcha-container"></div>
+        </div>
+
+        <div class="form-group hidden" id="otp-section">
+          <label>Kod z SMS (6 cyfr)</label>
+          <div class="otp-row">
+            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,0)">
+            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,1)">
+            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,2)">
+            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,3)">
+            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,4)">
+            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,5)">
+          </div>
+          <div style="margin-top:8px">
+            <button class="btn-send-sms" onclick="verifyOTP()" style="width:auto;padding:8px 20px">Zweryfikuj kod</button>
+            <span id="otp-status" style="margin-left:10px;font-size:13px;color:var(--gray-500)"></span>
+          </div>
+        </div>
+
+        <div class="hidden" id="phone-verified-badge">
+          <span class="verify-badge">
+            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l4 4 6-7" stroke="#3B6D11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            Numer zweryfikowany
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <button class="btn-primary" id="btn-submit" onclick="submitBooking()">
+      Zarezerwuj termin →
+    </button>
+
+    <!-- SUCCESS -->
+    <div class="card hidden" id="success-card">
+      <div class="success-box">
+        <div class="success-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <path d="M6 16l7 7 13-14" stroke="#1D9E75" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2>Rezerwacja przyjęta!</h2>
+        <p>Wkrótce zadzwonimy, aby potwierdzić termin.<br>Numer referencyjny:</p>
+        <div class="booking-ref" id="booking-ref">—</div>
+        <p style="margin-top:1rem;font-size:13px;color:var(--gray-500)">Możesz zamknąć tę stronę.</p>
+      </div>
+    </div>
+
+  </div><!-- /view-booking -->
+
+
+  <!-- ═══════════ ADMIN VIEW ═══════════ -->
+  <div id="view-admin" class="hidden">
+
+    <!-- Login gate -->
+    <div class="card" id="admin-gate">
+      <div class="admin-gate">
+        <h2>🔒 Panel administratora</h2>
+        <p style="color:var(--gray-500);margin-bottom:1.5rem;font-size:14px">Podaj hasło dostępu</p>
+        <input type="text" id="admin-pass" placeholder="hasło" style="max-width:220px;text-align:center;margin-bottom:10px">
+        <br>
+        <button class="btn-send-sms" onclick="adminLogin()" style="margin-top:6px">Zaloguj</button>
+        <p id="admin-err" style="color:var(--danger);font-size:13px;margin-top:8px"></p>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="admin-dashboard" class="hidden">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-box"><div class="val" id="stat-total">—</div><div class="lbl">Wszystkich zleceń</div></div>
+        <div class="stat-box"><div class="val" id="stat-week">—</div><div class="lbl">Ten tydzień</div></div>
+        <div class="stat-box"><div class="val" id="stat-today">—</div><div class="lbl">Dziś</div></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+          <h2 style="margin:0">Terminarz zleceń</h2>
+          <button class="btn-send-sms" onclick="loadBookings()" style="padding:7px 14px;font-size:13px">↻ Odśwież</button>
+        </div>
+        <div class="filters">
+          <button class="filter-btn active" onclick="filterBookings('all',this)">Wszystkie</button>
+          <button class="filter-btn" onclick="filterBookings('today',this)">Dziś</button>
+          <button class="filter-btn" onclick="filterBookings('week',this)">Ten tydzień</button>
+          <button class="filter-btn" onclick="filterBookings('future',this)">Przyszłe</button>
+        </div>
+        <div class="bookings-list" id="bookings-list">
+          <p style="color:var(--gray-500);font-size:14px;text-align:center;padding:2rem">Ładowanie…</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /view-admin -->
+
+</main>
+
+<!-- ════════════════════════════════ SCRIPT ════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────────────────────
+//  🔧 KONFIGURACJA — WYPEŁNIJ SWOIMI DANYMI Z FIREBASE CONSOLE
+// ─────────────────────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "TWOJ_API_KEY",
+  authDomain:        "TWOJ_PROJECT.firebaseapp.com",
+  projectId:         "TWOJ_PROJECT_ID",
+  storageBucket:     "TWOJ_PROJECT.appspot.com",
+  messagingSenderId: "TWOJ_SENDER_ID",
+  appId:             "TWOJ_APP_ID"
+};
+
+// Hasło admina — zmień na własne (lepiej trzymać w Firebase Auth lub env)
+const ADMIN_PASSWORD = "Admin1234!";
+
+// ─────────────────────────────────────────────────────────────────────────
+
+let db, auth;
+let phoneConfirmation = null;
+let phoneVerified = false;
+let verifiedPhone = "";
+let allBookings = [];
+
+// Init Firebase
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db   = firebase.firestore();
+  auth = firebase.auth();
+  auth.useDeviceLanguage();
+} catch(e) {
+  console.warn("Firebase not configured yet:", e.message);
+}
+
+// Set min date = tomorrow
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+document.getElementById("book-date").min = tomorrow.toISOString().split("T")[0];
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────
+function showView(v) {
+  document.getElementById("view-booking").classList.toggle("hidden", v !== "booking");
+  document.getElementById("view-admin").classList.toggle("hidden", v !== "admin");
+  document.querySelectorAll(".nav-tab").forEach((t,i) => {
+    t.classList.toggle("active", (v==="booking" && i===0) || (v==="admin" && i===1));
+  });
+}
+
+// ─── CAPACITY ─────────────────────────────────────────────────────────────
+let selectedCap = null;
+function selectCap(btn) {
+  document.querySelectorAll(".cap-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedCap = btn.dataset.val;
+  const custom = document.getElementById("cap-custom-row");
+  custom.classList.toggle("hidden", selectedCap !== "custom");
+}
+
+function getCapacity() {
+  if (!selectedCap) return null;
+  if (selectedCap === "custom") {
+    const v = document.getElementById("cap-custom").value.trim();
+    return v ? v + " m³" : null;
+  }
+  return selectedCap + " m³";
+}
+
+// ─── SMS VERIFICATION ──────────────────────────────────────────────────────
+function sendSMS() {
+  if (!db) { alert("Skonfiguruj Firebase — patrz komentarz w kodzie."); return; }
+  const raw = document.getElementById("book-phone").value.trim();
+  let phone = raw.replace(/\s+/g,"");
+  if (!phone.startsWith("+")) phone = "+48" + phone.replace(/^0+/,"");
+
+  if (!/^\+\d{10,15}$/.test(phone)) {
+    alert("Podaj poprawny numer telefonu, np. +48600123456");
+    return;
+  }
+
+  document.getElementById("btn-sms").disabled = true;
+  document.getElementById("btn-sms").innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
+      size: "invisible",
+      callback: () => {}
+    });
+
+    auth.signInWithPhoneNumber(phone, recaptchaVerifier)
+      .then(result => {
+        phoneConfirmation = result;
+        verifiedPhone = phone;
+        document.getElementById("otp-section").classList.remove("hidden");
+        document.getElementById("btn-sms").innerHTML = "Wyślij ponownie";
+        document.getElementById("btn-sms").disabled = false;
+        document.querySelector(".otp-digit").focus();
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Błąd wysyłania SMS: " + err.message);
+        document.getElementById("btn-sms").innerHTML = "Wyślij SMS";
+        document.getElementById("btn-sms").disabled = false;
+      });
+  } catch(e) {
+    alert("Firebase nie jest skonfigurowany. Uzupełnij dane w kodzie.");
+    document.getElementById("btn-sms").innerHTML = "Wyślij SMS";
+    document.getElementById("btn-sms").disabled = false;
+  }
+}
+
+function otpNav(input, idx) {
+  const digits = document.querySelectorAll(".otp-digit");
+  if (input.value.length === 1 && idx < 5) digits[idx+1].focus();
+  if ([...digits].every(d => d.value.length === 1)) verifyOTP();
+}
+
+function verifyOTP() {
+  const digits = [...document.querySelectorAll(".otp-digit")];
+  const code = digits.map(d => d.value).join("");
+  if (code.length < 6) { alert("Wprowadź 6-cyfrowy kod."); return; }
+  if (!phoneConfirmation) { alert("Najpierw wyślij SMS."); return; }
+
+  const status = document.getElementById("otp-status");
+  status.textContent = "Weryfikowanie…";
+
+  phoneConfirmation.confirm(code)
+    .then(() => {
+      phoneVerified = true;
+      document.getElementById("otp-section").classList.add("hidden");
+      document.getElementById("phone-verified-badge").classList.remove("hidden");
+      document.getElementById("btn-sms").classList.add("hidden");
+      document.getElementById("book-phone").disabled = true;
+      status.textContent = "";
+    })
+    .catch(err => {
+      status.textContent = "❌ Błędny kod. Spróbuj ponownie.";
+      console.error(err);
+    });
+}
+
+// ─── SUBMIT ────────────────────────────────────────────────────────────────
+async function submitBooking() {
+  if (!db) { alert("Skonfiguruj Firebase — patrz komentarz w kodzie."); return; }
+
+  const date    = document.getElementById("book-date").value;
+  const time    = document.getElementById("book-time").value;
+  const address = document.getElementById("book-address").value.trim();
+  const zip     = document.getElementById("book-zip").value.trim();
+  const city    = document.getElementById("book-city").value.trim();
+  const notes   = document.getElementById("book-notes").value.trim();
+  const cap     = getCapacity();
+
+  if (!date || !time)    { alert("Wybierz datę i godzinę."); return; }
+  if (!cap)              { alert("Wybierz pojemność szamba."); return; }
+  if (!address || !city) { alert("Podaj adres."); return; }
+  if (!phoneVerified)    { alert("Zweryfikuj numer telefonu."); return; }
+
+  const btn = document.getElementById("btn-submit");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Rezerwuję…';
+
+  const ref = "SZ-" + Math.random().toString(36).substring(2,6).toUpperCase();
+
+  try {
+    await db.collection("bookings").add({
+      date, time, address, zip, city, notes,
+      capacity: cap,
+      phone: verifiedPhone,
+      ref,
+      status: "new",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById("booking-ref").textContent = ref;
+    document.getElementById("btn-submit").classList.add("hidden");
+    document.getElementById("success-card").classList.remove("hidden");
+    document.getElementById("success-card").scrollIntoView({behavior:"smooth"});
+  } catch(e) {
+    alert("Błąd zapisu: " + e.message);
+    btn.disabled = false;
+    btn.innerHTML = "Zarezerwuj termin →";
+  }
+}
+
+// ─── ADMIN ─────────────────────────────────────────────────────────────────
+function adminLogin() {
+  const pass = document.getElementById("admin-pass").value;
+  if (pass === ADMIN_PASSWORD) {
+    document.getElementById("admin-gate").classList.add("hidden");
+    document.getElementById("admin-dashboard").classList.remove("hidden");
+    loadBookings();
+  } else {
+    document.getElementById("admin-err").textContent = "Błędne hasło.";
+  }
+}
+
+async function loadBookings() {
+  if (!db) {
+    document.getElementById("bookings-list").innerHTML = `<p style="color:var(--danger);text-align:center;padding:1rem">Firebase nie skonfigurowany.</p>`;
+    return;
+  }
+  try {
+    const snap = await db.collection("bookings").orderBy("date","desc").orderBy("createdAt","desc").get();
+    allBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    updateStats();
+    renderBookings(allBookings);
+  } catch(e) {
+    document.getElementById("bookings-list").innerHTML = `<p style="color:var(--danger)">Błąd: ${e.message}</p>`;
+  }
+}
+
+function updateStats() {
+  const today = new Date().toISOString().split("T")[0];
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekStr = weekAgo.toISOString().split("T")[0];
+  document.getElementById("stat-total").textContent = allBookings.length;
+  document.getElementById("stat-today").textContent = allBookings.filter(b => b.date === today).length;
+  document.getElementById("stat-week").textContent  = allBookings.filter(b => b.date >= weekStr).length;
+}
+
+function filterBookings(filter, btn) {
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  const today = new Date().toISOString().split("T")[0];
+  const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate()+7);
+  const weekStr = weekEnd.toISOString().split("T")[0];
+
+  let filtered = allBookings;
+  if (filter === "today")  filtered = allBookings.filter(b => b.date === today);
+  if (filter === "week")   filtered = allBookings.filter(b => b.date >= today && b.date <= weekStr);
+  if (filter === "future") filtered = allBookings.filter(b => b.date >= today);
+  renderBookings(filtered);
+}
+
+function renderBookings(list) {
+  const el = document.getElementById("bookings-list");
+  if (!list.length) { el.innerHTML = `<p style="color:var(--gray-500);text-align:center;padding:2rem">Brak zleceń.</p>`; return; }
+
+  el.innerHTML = list.map(b => {
+    const d = new Date(b.date + "T12:00:00");
+    const day   = d.getDate();
+    const month = d.toLocaleDateString("pl-PL",{month:"short"});
+    const isNew = b.status === "new";
+    return `
+      <div class="booking-card">
+        <div class="booking-date-block">
+          <div class="booking-day">${day}</div>
+          <div class="booking-month">${month}</div>
+        </div>
+        <div class="booking-info">
+          <h3>${b.address}, ${b.zip} ${b.city}</h3>
+          <p>📞 ${b.phone}</p>
+          ${b.notes ? `<p style="margin-top:4px;font-style:italic;">"${b.notes}"</p>` : ""}
+        </div>
+        <div class="booking-meta">
+          <span class="tag tag-size">${b.capacity}</span>
+          <span class="tag tag-time">${b.time}</span>
+          ${isNew ? `<span class="tag tag-new">nowe</span>` : ""}
+          <span style="font-size:11px;color:var(--gray-500);margin-top:2px">#${b.ref}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+</script>
+</body>
+</html>
