@@ -8,8 +8,6 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<!-- EmailJS -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
   :root {
@@ -360,44 +358,20 @@
       </div>
     </div>
 
-    <!-- STEP 4: Email verify -->
+    <!-- STEP 4: Contact -->
     <div class="card">
       <div class="card-step">
         <div class="step-badge">4</div>
-        <h2 style="margin:0">Weryfikacja e-mail</h2>
+        <h2 style="margin:0">Dane kontaktowe</h2>
       </div>
-      <div id="email-verify-section">
-        <div class="info-note">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="7.5" stroke="#185FA5"/><rect x="7.25" y="6.5" width="1.5" height="5" rx=".75" fill="#185FA5"/><circle cx="8" cy="4.5" r=".75" fill="#185FA5"/></svg>
-          Wyślemy kod na Twój e-mail, aby potwierdzić rezerwację.
+      <div class="row-2">
+        <div class="form-group">
+          <label>Numer telefonu</label>
+          <input type="tel" id="book-phone" placeholder="+48 600 000 000">
         </div>
         <div class="form-group">
-          <label>Twój adres e-mail</label>
-          <div class="phone-row">
-            <input type="email" id="book-email" placeholder="np. jan@gmail.com">
-            <button class="btn-send-sms" id="btn-send-code" onclick="sendEmailCode()">Wyślij kod</button>
-          </div>
-        </div>
-        <div class="form-group hidden" id="otp-section">
-          <label>Kod z e-maila (6 cyfr)</label>
-          <div class="otp-row">
-            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,0)">
-            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,1)">
-            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,2)">
-            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,3)">
-            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,4)">
-            <input type="text" maxlength="1" class="otp-digit" oninput="otpNav(this,5)">
-          </div>
-          <div style="margin-top:8px">
-            <button class="btn-send-sms" onclick="verifyEmailCode()" style="width:auto;padding:8px 20px">Zweryfikuj kod</button>
-            <span id="otp-status" style="margin-left:10px;font-size:13px;color:var(--gray-500)"></span>
-          </div>
-        </div>
-        <div class="hidden" id="email-verified-badge">
-          <span class="verify-badge">
-            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l4 4 6-7" stroke="#3B6D11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-            E-mail zweryfikowany
-          </span>
+          <label>Adres e-mail (opcjonalnie)</label>
+          <input type="email" id="book-email" placeholder="np. jan@gmail.com">
         </div>
       </div>
     </div>
@@ -534,76 +508,7 @@ function getCapacity() {
   return selectedCap + " m³";
 }
 
-// ─── EMAILJS CONFIG ────────────────────────────────────────────────────────
-// Uzupełnij swoimi danymi z emailjs.com
-const EMAILJS_PUBLIC_KEY  = "xVS1txvs-ki9rK5J9";
-const EMAILJS_SERVICE_ID  = "service_ndd3dtv";
-const EMAILJS_TEMPLATE_ID = "template_qf10hoi";
 
-let generatedCode = null;
-let emailVerified = false;
-let verifiedEmail = "";
-
-function sendEmailCode() {
-  const email = document.getElementById("book-email").value.trim();
-  if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-    alert("Podaj poprawny adres e-mail.");
-    return;
-  }
-
-  const btn = document.getElementById("btn-send-code");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-
-  generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
-  verifiedEmail = email;
-
-  emailjs.init(EMAILJS_PUBLIC_KEY);
-  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-    to_email: email,
-    code: generatedCode
-  })
-  .then(() => {
-    document.getElementById("otp-section").classList.remove("hidden");
-    btn.innerHTML = "Wyślij ponownie";
-    btn.disabled = false;
-    document.querySelector(".otp-digit").focus();
-  })
-  .catch(err => {
-    console.error(err);
-    alert("Błąd wysyłania e-maila: " + JSON.stringify(err));
-    btn.innerHTML = "Wyślij kod";
-    btn.disabled = false;
-  });
-}
-
-function otpNav(input, idx) {
-  const digits = document.querySelectorAll(".otp-digit");
-  if (input.value.length === 1 && idx < 5) digits[idx+1].focus();
-  if ([...digits].every(d => d.value.length === 1)) verifyEmailCode();
-}
-
-function verifyEmailCode() {
-  const digits = [...document.querySelectorAll(".otp-digit")];
-  const code = digits.map(d => d.value).join("");
-  const status = document.getElementById("otp-status");
-
-  if (code.length < 6) { alert("Wprowadź 6-cyfrowy kod."); return; }
-  if (!generatedCode)  { alert("Najpierw wyślij kod na e-mail."); return; }
-
-  if (code === generatedCode) {
-    emailVerified = true;
-    document.getElementById("otp-section").classList.add("hidden");
-    document.getElementById("email-verified-badge").classList.remove("hidden");
-    document.getElementById("btn-send-code").classList.add("hidden");
-    document.getElementById("book-email").disabled = true;
-    status.textContent = "";
-  } else {
-    status.textContent = "❌ Błędny kod. Spróbuj ponownie.";
-    digits.forEach(d => d.value = "");
-    digits[0].focus();
-  }
-}
 
 // ─── SUBMIT ────────────────────────────────────────────────────────────────
 async function submitBooking() {
@@ -617,13 +522,16 @@ async function submitBooking() {
   const zip     = document.getElementById("book-zip").value.trim();
   const city    = document.getElementById("book-city").value.trim();
   const notes   = document.getElementById("book-notes").value.trim();
+  const phone   = document.getElementById("book-phone").value.trim();
+  const email   = document.getElementById("book-email").value.trim();
   const cap     = getCapacity();
 
   if (!date || !time)    { alert("Wybierz datę i godzinę."); return; }
   if (!cap)              { alert("Wybierz pojemność szamba."); return; }
   if (!name || !surname) { alert("Podaj imię i nazwisko."); return; }
   if (!address || !city) { alert("Podaj adres."); return; }
-  if (!emailVerified)    { alert("Zweryfikuj adres e-mail."); return; }
+  if (!phone)            { alert("Podaj numer telefonu."); return; }
+
 
   const btn = document.getElementById("btn-submit");
   btn.disabled = true;
@@ -635,7 +543,7 @@ async function submitBooking() {
     await db.collection("bookings").add({
       date, time, name, surname, address, zip, city, notes,
       capacity: cap,
-      email: verifiedEmail,
+      phone, email,
       ref,
       status: "new",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -720,7 +628,7 @@ function renderBookings(list) {
         </div>
         <div class="booking-info">
           <h3>${b.name ? b.name + ' ' + b.surname + ' — ' : ''}${b.address}, ${b.zip} ${b.city}</h3>
-          <p>📧 ${b.email}</p>
+          <p>📞 ${b.phone}${b.email ? " · " + b.email : ""}</p>
           ${b.notes ? `<p style="margin-top:4px;font-style:italic;">"${b.notes}"</p>` : ""}
         </div>
         <div class="booking-meta">
