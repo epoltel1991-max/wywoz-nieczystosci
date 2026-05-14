@@ -192,6 +192,12 @@
   .tag-size { background: var(--primary-light); color: var(--primary-dark); }
   .tag-time { background: #E6F1FB; color: #185FA5; }
   .tag-new { background: #FAEEDA; color: #633806; }
+  .btn-delete {
+    padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid #F7C1C1;
+    background: #FCEBEB; color: #A32D2D; font-size: 12px; cursor: pointer;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .btn-delete:hover { background: #E24B4A; color: white; border-color: #E24B4A; }
 
   .filters {
     display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem;
@@ -611,6 +617,23 @@ function filterBookings(filter, btn) {
   renderBookings(filtered);
 }
 
+async function deleteBooking(id, btn) {
+  if (!confirm("Usunąć to zlecenie? Tej operacji nie można cofnąć.")) return;
+  btn.disabled = true;
+  btn.textContent = "…";
+  try {
+    await db.collection("bookings").doc(id).delete();
+    allBookings = allBookings.filter(b => b.id !== id);
+    updateStats();
+    const activeFilter = document.querySelector(".filter-btn.active");
+    activeFilter.click();
+  } catch(e) {
+    alert("Błąd usuwania: " + e.message);
+    btn.disabled = false;
+    btn.textContent = "🗑 Usuń";
+  }
+}
+
 function renderBookings(list) {
   const el = document.getElementById("bookings-list");
   if (!list.length) { el.innerHTML = `<p style="color:var(--gray-500);text-align:center;padding:2rem">Brak zleceń.</p>`; return; }
@@ -636,6 +659,7 @@ function renderBookings(list) {
           <span class="tag tag-time">${b.time}</span>
           ${isNew ? `<span class="tag tag-new">nowe</span>` : ""}
           <span style="font-size:11px;color:var(--gray-500);margin-top:2px">#${b.ref}</span>
+          <button class="btn-delete" onclick="deleteBooking('${b.id}', this)">🗑 Usuń</button>
         </div>
       </div>`;
   }).join("");
